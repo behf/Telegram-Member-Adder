@@ -1,0 +1,7 @@
+src/config.json
+src/groups
+session
+venv
+.idea
+src/phones.txt
+*.pyc
