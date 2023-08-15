@@ -1,6 +1,4 @@
 from enum import Enum
-from json import JSONEncoder
-from typing import Any
 
 
 class MemberStatus(Enum):
@@ -9,6 +7,6 @@ class MemberStatus(Enum):
     SKIPPED_PRIVACY = 2
     SKIPPED_HAS_LEFT = 3
     SKIPPED_ADDER_RESTRICTED = 4
-
-
-    
+    SKIPPED_PEER_INVALID = 5
+    SKIPPED_ALREADY_MEMBER = 6
+    SKIPPED_HAVE_NOT_USERNAME = 7

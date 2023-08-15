@@ -2,7 +2,10 @@ import json
 import pathlib
 import random
 import re
+from collections import Counter
 from typing import List, Dict, Tuple
+
+from pyrogram import Client
 
 from Config import Config
 from models.MemberEncoder import MemberEncoder, MemberDecoder
@@ -222,3 +225,15 @@ def read_scrapped_members(group_id: int) -> List[Member]:
     with open(file=group_filename, mode='r', encoding="utf-8") as f:
         list_of_members = json.load(f, cls=MemberDecoder)
     return list_of_members
+
+
+def print_state(members: List[Member]) -> None:
+    status_counts = Counter(member.status for member in members)
+    print(status_counts)
+
+
+async def get_target_group_member_ids(group_id: int, client: Client) -> List[int]:
+    members = []
+    async for member in client.get_chat_members(chat_id=group_id):
+        members.append(member.user.id)
+    return members
