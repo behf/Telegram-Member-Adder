@@ -10,7 +10,6 @@ from pyrogram import Client
 from Config import Config
 from models.MemberEncoder import MemberEncoder, MemberDecoder
 from models.member import Member
-from models.telegram_account import TelegramAccount
 
 
 def read_devices() -> List[Dict]:
@@ -44,10 +43,15 @@ def create_required_directories():
     groups_path.mkdir(parents=True, exist_ok=True)
 
 
-def write_extracted_members(extracted_members: List[Member], source_group_id: int) -> None:
-
+def write_members(extracted_members: Dict[str, List[Member]], source_group_id: int) -> None:
     with open(f'src/groups/{abs(source_group_id)}.json', 'w', encoding="utf-8") as f:
         json.dump(extracted_members, f, indent=4, ensure_ascii=False, cls=MemberEncoder)
+
+
+def write_members_partial(members:  List[Member], source_group_id: int, account_phone: str) -> None:
+    all_members_dict = read_scrapped_members(source_group_id)
+    all_members_dict[account_phone] = members
+    write_members(extracted_members=all_members_dict, source_group_id=source_group_id)
 
 
 def get_source_group_id() -> int:
@@ -60,6 +64,7 @@ def get_source_group_id() -> int:
         source_input = source_input or source_group_id
 
         if is_valid_group_id(source_input):
+            config.source_group = int(source_input)
             return int(source_input)
         else:
             print("Invalid Group ID")
@@ -188,13 +193,6 @@ def add_phone_list() -> None:
     config.phone_numbers = list(phone_numbers)
 
 
-def read_accounts() -> List[TelegramAccount]:
-    accounts = []
-    for info in prepare_accounts_info():
-        accounts.append(TelegramAccount(**info))
-    return accounts
-
-
 def has_phone_numbers() -> bool:
     config = Config()
     return bool(config.phone_numbers)
@@ -220,7 +218,7 @@ def is_scrapped(group_id: int) -> bool:
     return group_filename.exists()
 
 
-def read_scrapped_members(group_id: int) -> List[Member]:
+def read_scrapped_members(group_id: int) -> Dict[str, List[Member]]:
     group_filename = pathlib.Path(f"src/groups/{abs(group_id)}.json")
     with open(file=group_filename, mode='r', encoding="utf-8") as f:
         list_of_members = json.load(f, cls=MemberDecoder)
@@ -237,3 +235,20 @@ async def get_target_group_member_ids(group_id: int, client: Client) -> List[int
     async for member in client.get_chat_members(chat_id=group_id):
         members.append(member.user.id)
     return members
+
+
+def ask_for_rescrap(group_id: int) -> bool:
+    group_scrap_path = pathlib.Path(f"src/groups/{abs(group_id)}.json")
+    if not group_scrap_path:
+        return True
+    inpt = input("we have scraped this group before, Do you want to scrap it again?(Yes/no)")
+
+    if inpt.lower().startswith('n'):
+        return False
+    return True
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]

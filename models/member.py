@@ -9,7 +9,7 @@ class Member:
             username=None,
             first_name=None,
             last_name=None,
-            status=None,
+            status=MemberStatus.NOT_PROCESSED,
             processed_by=None,
     ):
         if member is not None:
@@ -32,10 +32,27 @@ class Member:
         self.status = MemberStatus.NOT_PROCESSED
         self.processed_by_phone = None
 
-    def initialize_with_attributes(self, user_id, username, first_name, last_name, status, processed_by):
+    def initialize_with_attributes(
+            self,
+            user_id,
+            username,
+            first_name,
+            last_name,
+            status=MemberStatus.NOT_PROCESSED,
+            processed_by=None,
+    ):
         self.user_id = user_id
         self.username = username
         self.first_name = first_name
         self.last_name = last_name
         self.status = status
         self.processed_by_phone = processed_by
+
+    def __repr__(self):
+        return f"Member(user_id={self.user_id}, username={self.username}, status={self.status})"
+
+    def __hash__(self):
+        return hash(self.user_id)
+
+    def __eq__(self, other):
+        return self.user_id == other.user_id

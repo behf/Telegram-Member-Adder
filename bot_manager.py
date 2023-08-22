@@ -1,6 +1,7 @@
 import asyncio
+import datetime
 import logging
-from typing import List
+from typing import List, Union, Dict, Any
 
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import (
@@ -32,8 +33,37 @@ class BotManager:
             # Print separator
         print((40 * "*").center(60))
 
-    async def scrape_source_group(self, source_group_id: int) -> List[Member]:
-        extracted_members = []
+    async def start_bots(self):
+        if not utils.check_data_is_enough():
+            return False
+
+        if len(self.accounts) > 0:
+            print("already read accounts, cancelling")
+            return True
+
+        self.accounts = self.read_accounts()
+
+        await self.login()
+        return True
+
+    @staticmethod
+    def read_accounts() -> List[TelegramAccount]:
+        accounts = []
+        for info in utils.prepare_accounts_info():
+            accounts.append(TelegramAccount(**info))
+        return accounts
+
+    async def scrape_source_group(self) -> None:
+        if not await self.start_bots():
+            return None
+
+        source_group_id = utils.get_source_group_id()
+
+        if not utils.ask_for_rescrap(source_group_id):
+            return None
+
+
+        members_list = []
 
         for index, account in enumerate(self.accounts):
 
@@ -44,91 +74,77 @@ class BotManager:
                 if index == 0 and not chat_member.status == ChatMemberStatus.ADMINISTRATOR:
                     # Only first account scrapes and adds to contacts
                     extracted_member = Member(member=chat_member)
-                    extracted_members.append(extracted_member)
+                    members_list.append(extracted_member)
                 else:
                     # Other accounts just iterate without appending
                     pass
 
-        utils.write_extracted_members(extracted_members=extracted_members, source_group_id=source_group_id)
+        chunk_size = int(len(members_list) / len(self.accounts))
 
-        return extracted_members
+        dict_of_members = dict.fromkeys([account.phone_number for account in self.accounts])
+        dict_of_members = dict(zip(dict_of_members.keys(), list(utils.chunks(members_list, chunk_size))))
 
-    async def add_members_to_target_group(self, target_group_id: int, members: List[Member]) -> None:
-        member_index = 0
-        config = Config()
+        utils.write_members(extracted_members=dict_of_members, source_group_id=source_group_id)
 
-        target_group_members = await utils.get_target_group_member_ids(target_group_id, self.accounts[0])
+    async def scrap_from_messages(self) -> None:
 
-        while member_index < len(members):
+        if not await self.start_bots():
+            return None
 
-            for account in self.accounts:
+        source_group_id = utils.get_source_group_id()
 
-                try:
-                    member = members[member_index]
-                except IndexError:
-                    break
+        if not utils.ask_for_rescrap(source_group_id):
+            return None
 
-                print(f"trying for {member.user_id} {member.first_name}")
-                member_index += 1
+        message_count = await self.accounts[0].get_chat_history_count(source_group_id)
 
-                if member.status != MemberStatus.NOT_PROCESSED:
-                    continue
-                if member.user_id in target_group_members:
-                    member.status = MemberStatus.SKIPPED_ALREADY_MEMBER
-                    continue
+        offset = int(message_count / len(self.accounts))
 
-                try:
+        awaitables = []
 
-                    await account.add_chat_members(chat_id=target_group_id, user_ids=member.username)
-                    logger.info(f"{account.name}: Added {member.user_id}")
-                    member.status = MemberStatus.ADDED_TO_GROUP
+        for multiplier, account in enumerate(self.accounts, 0):
+            awaitables.append(account.scrap_group_members_from_messages(
+                group_id=source_group_id,
+                limit=offset,
+                offset=multiplier * offset),
+            )
 
-                except UserPrivacyRestricted:
-                    logger.warning(f"{account.name}: {member.user_id} has privacy restricted")
-                    member.status = MemberStatus.SKIPPED_PRIVACY
+        list_of_set_of_members = await asyncio.gather(*awaitables)
 
-                except UserNotMutualContact:
-                    logger.warning(f"{account.name}: You must be in their contacts to add {member.user_id}")
-                    member.status = MemberStatus.SKIPPED_HAS_LEFT
+        dict_of_members = dict.fromkeys([account.phone_number for account in self.accounts])
+        dict_of_members = dict(zip(dict_of_members.keys(), [list(s) for s in list_of_set_of_members]))
 
-                except PeerFlood:
-                    logger.warning(f"{account.name}: Account restricted. can't add {member.user_id}")
-                    member.status = MemberStatus.SKIPPED_ADDER_RESTRICTED
+        utils.write_members(extracted_members=dict_of_members, source_group_id=source_group_id)
 
-                except PeerIdInvalid:
-                    logger.warning("Make sure you meet the peer before interacting with it")
-                    member.status = MemberStatus.SKIPPED_PEER_INVALID
-
-                except TypeError:
-                    logger.warning(f"User {member.user_id} has no username")
-                    member.status = MemberStatus.SKIPPED_HAVE_NOT_USERNAME
-
-                except Exception as e:
-                    logger.exception(f"{account.name}: Error adding {member.user_id}", exc_info=e)
-
-                utils.print_state(members)
-
-                await asyncio.sleep(25 / len(self.accounts))
-
-            utils.write_extracted_members(members, config.source_group)
-
-    async def start_adding(self):
-        if not utils.check_data_is_enough():
+    async def add_members_to_target_group(self) -> None:
+        if not await self.start_bots():
             return
 
-        self.accounts = utils.read_accounts()
-        await self.login()
+        config = Config()
 
         source_group_id, target_group_id = utils.add_group_ids()
 
-        for account in self.accounts:
-            if not await account.am_i_a_member(source_group_id, target_group_id):
-                self.accounts.remove(account)
+        if not utils.is_scrapped(source_group_id):
+            print("Group not scrapped, Please scrap and retry")
+            return
 
-        if utils.is_scrapped(source_group_id):
-            members = utils.read_scrapped_members(source_group_id)
-        else:
-            members = await self.scrape_source_group(source_group_id)
-        await self.add_members_to_target_group(target_group_id, members)
+        await self.check_all_accounts_are_a_member()
 
+        target_group_members = await utils.get_target_group_member_ids(target_group_id, self.accounts[0])
+        members = utils.read_scrapped_members(group_id=source_group_id)
+
+        await asyncio.gather(*[account.add_member_to_target_group(
+            source_group_id=source_group_id,
+            source_members=members[account.phone_number],
+            target_group_members=target_group_members) for account
+            in self.accounts])
+
+        utils.write_members(members, config.source_group)
         print("Members added successfully!")
+
+    async def check_all_accounts_are_a_member(self):
+        config = Config()
+
+        for account in self.accounts:
+            if not await account.am_i_a_member(config.source_group, config.target_group):
+                self.accounts.remove(account)
