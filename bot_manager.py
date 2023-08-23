@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import logging
 from typing import List
 
@@ -60,11 +61,13 @@ class BotManager:
             members = account.get_chat_members(source_group_id)
 
             async for chat_member in members:
+                gc.disable()
 
                 if index == 0 and not chat_member.status == ChatMemberStatus.ADMINISTRATOR:
                     # Only first account scrapes and adds to contacts
                     extracted_member = Member(member=chat_member)
                     members_list.append(extracted_member)
+                    gc.enable()
                 else:
                     # Other accounts just iterate without appending
                     pass
