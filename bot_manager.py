@@ -1,21 +1,12 @@
 import asyncio
-import datetime
 import logging
-from typing import List, Union, Dict, Any
+from typing import List
 
 from pyrogram.enums import ChatMemberStatus
-from pyrogram.errors import (
-    UserPrivacyRestricted,
-    UserBannedInChannel,
-    BotMethodInvalid,
-    FloodWait,
-    UserNotMutualContact, PeerFlood, PeerIdInvalid,
-)
 
 import utils
 from Config import Config
 from models.member import Member
-from models.member_status import MemberStatus
 from models.telegram_account import TelegramAccount
 
 logger = logging.getLogger(__name__)
@@ -61,7 +52,6 @@ class BotManager:
 
         if not utils.ask_for_rescrap(source_group_id):
             return None
-
 
         members_list = []
 
