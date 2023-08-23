@@ -4,7 +4,7 @@ from typing import List, Union
 
 from pyrogram import Client
 from pyrogram.errors import ChannelInvalid, PeerIdInvalid, PeerFlood, UserNotMutualContact, UserPrivacyRestricted, \
-    ChatWriteForbidden, ChatAdminRequired
+    ChatWriteForbidden, ChatAdminRequired, UserKicked
 
 import utils
 from models.member import Member
@@ -129,6 +129,10 @@ class TelegramAccount(Client):
             except ChatAdminRequired:
                 logger.warning(f"{self.phone_number} has not admin rights in this chat")
                 member.status = MemberStatus.SKIPPED_NO_ADMIN_RIGHTS
+
+            except UserKicked:
+                logger.warning(f"{self.phone_number}: user {member.user_id} has been kicked from group")
+                member.status = MemberStatus.SKIPPED_USER_KICKED
 
             except Exception as e:
                 logger.exception(f"{self.name}: Error adding {member.user_id}", exc_info=e)
