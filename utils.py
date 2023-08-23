@@ -239,7 +239,7 @@ async def get_target_group_member_ids(group_id: int, client: Client) -> List[int
 
 def ask_for_rescrap(group_id: int) -> bool:
     group_scrap_path = pathlib.Path(f"src/groups/{abs(group_id)}.json")
-    if not group_scrap_path:
+    if not group_scrap_path.exists():
         return True
     inpt = input("we have scraped this group before, Do you want to scrap it again?(Yes/no)")
 
