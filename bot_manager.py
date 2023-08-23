@@ -49,9 +49,9 @@ class BotManager:
         if not await self.start_bots():
             return None
 
-        source_group_id = utils.get_source_group_id()
+        source_group_id, target_group_id = utils.add_group_ids()
 
-        if not utils.ask_for_rescrap(source_group_id):
+        if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
             return None
 
         members_list = []
@@ -77,16 +77,20 @@ class BotManager:
         dict_of_members = dict.fromkeys([account.phone_number for account in self.accounts])
         dict_of_members = dict(zip(dict_of_members.keys(), list(utils.chunks(members_list, chunk_size))))
 
-        utils.write_members(extracted_members=dict_of_members, source_group_id=source_group_id)
+        utils.write_members(
+            extracted_members=dict_of_members,
+            source_group_id=source_group_id,
+            target_group_id=target_group_id,
+        )
 
     async def scrap_from_messages(self) -> None:
 
         if not await self.start_bots():
             return None
 
-        source_group_id = utils.get_source_group_id()
+        source_group_id, target_group_id = utils.add_group_ids()
 
-        if not utils.ask_for_rescrap(source_group_id):
+        if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
             return None
 
         message_count = await self.accounts[0].get_chat_history_count(source_group_id)
@@ -107,7 +111,11 @@ class BotManager:
         dict_of_members = dict.fromkeys([account.phone_number for account in self.accounts])
         dict_of_members = dict(zip(dict_of_members.keys(), [list(s) for s in list_of_set_of_members]))
 
-        utils.write_members(extracted_members=dict_of_members, source_group_id=source_group_id)
+        utils.write_members(
+            extracted_members=dict_of_members,
+            source_group_id=source_group_id,
+            target_group_id=target_group_id,
+        )
 
     async def add_members_to_target_group(self) -> None:
         if not await self.start_bots():
@@ -117,22 +125,27 @@ class BotManager:
 
         source_group_id, target_group_id = utils.add_group_ids()
 
-        if not utils.is_scrapped(source_group_id):
+        if not utils.is_scrapped(source_group_id=source_group_id, target_group_id=target_group_id):
             print("Group not scrapped, Please scrap and retry")
             return
 
         await self.check_all_accounts_are_a_member()
 
         target_group_members = await utils.get_target_group_member_ids(target_group_id, self.accounts[0])
-        members = utils.read_scrapped_members(group_id=source_group_id)
+        members = utils.read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
 
         await asyncio.gather(*[account.add_member_to_target_group(
+            target_group_id=target_group_id,
             source_group_id=source_group_id,
             source_members=members[account.phone_number],
             target_group_members=target_group_members) for account
             in self.accounts])
 
-        utils.write_members(members, config.source_group)
+        utils.write_members(
+            extracted_members=members,
+            source_group_id=config.source_group,
+            target_group_id=target_group_id,
+        )
         print("Members added successfully!")
 
     async def check_all_accounts_are_a_member(self):

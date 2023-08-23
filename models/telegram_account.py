@@ -82,6 +82,7 @@ class TelegramAccount(Client):
 
     async def add_member_to_target_group(
             self,
+            target_group_id: Union[int, str],
             source_group_id: Union[int, str],
             source_members: List[Member],
             target_group_members,
@@ -97,7 +98,7 @@ class TelegramAccount(Client):
 
             try:
 
-                await self.add_chat_members(chat_id=source_group_id, user_ids=member.username)
+                await self.add_chat_members(chat_id=target_group_id, user_ids=member.user_id)
                 logger.warning(f"{self.name}: Added {member.user_id}")
                 member.status = MemberStatus.ADDED_TO_GROUP
 
@@ -136,6 +137,7 @@ class TelegramAccount(Client):
             utils.write_members_partial(
                 members=source_members,
                 source_group_id=source_group_id,
+                target_group_id=target_group_id,
                 account_phone=self.phone_number,
             )
 

@@ -43,15 +43,20 @@ def create_required_directories():
     groups_path.mkdir(parents=True, exist_ok=True)
 
 
-def write_members(extracted_members: Dict[str, List[Member]], source_group_id: int) -> None:
-    with open(f'src/groups/{abs(source_group_id)}.json', 'w', encoding="utf-8") as f:
+def write_members(extracted_members: Dict[str, List[Member]], source_group_id: int, target_group_id: int) -> None:
+    with open(f'src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json', 'w', encoding="utf-8") as f:
         json.dump(extracted_members, f, indent=4, ensure_ascii=False, cls=MemberEncoder)
 
 
-def write_members_partial(members:  List[Member], source_group_id: int, account_phone: str) -> None:
-    all_members_dict = read_scrapped_members(source_group_id)
+def write_members_partial(
+        members: List[Member],
+        source_group_id: int,
+        target_group_id: int,
+        account_phone: str,
+) -> None:
+    all_members_dict = read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
     all_members_dict[account_phone] = members
-    write_members(extracted_members=all_members_dict, source_group_id=source_group_id)
+    write_members(extracted_members=all_members_dict, source_group_id=source_group_id, target_group_id=target_group_id)
 
 
 def get_source_group_id() -> int:
@@ -213,13 +218,13 @@ def check_data_is_enough() -> bool:
     return True
 
 
-def is_scrapped(group_id: int) -> bool:
-    group_filename = pathlib.Path(f"src/groups/{abs(group_id)}.json")
+def is_scrapped(source_group_id: int, target_group_id: int) -> bool:
+    group_filename = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
     return group_filename.exists()
 
 
-def read_scrapped_members(group_id: int) -> Dict[str, List[Member]]:
-    group_filename = pathlib.Path(f"src/groups/{abs(group_id)}.json")
+def read_scrapped_members(source_group_id: int, target_group_id: int) -> Dict[str, List[Member]]:
+    group_filename = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
     with open(file=group_filename, mode='r', encoding="utf-8") as f:
         list_of_members = json.load(f, cls=MemberDecoder)
     return list_of_members
@@ -237,8 +242,8 @@ async def get_target_group_member_ids(group_id: int, client: Client) -> List[int
     return members
 
 
-def ask_for_rescrap(group_id: int) -> bool:
-    group_scrap_path = pathlib.Path(f"src/groups/{abs(group_id)}.json")
+def ask_for_rescrap(source_group_id: int, target_group_id: int) -> bool:
+    group_scrap_path = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
     if not group_scrap_path.exists():
         return True
     inpt = input("we have scraped this group before, Do you want to scrap it again?(Yes/no)")
