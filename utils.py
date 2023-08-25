@@ -257,3 +257,17 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+
+def get_adding_method() -> str:
+    config = Config()
+    options = ["username", "id"]
+    options = [option.capitalize() if option in config.adding_method else option for option in options]
+
+    answer = input(f"How do you want to add members[{'/'.join(options)}]?")
+    if answer.lower().startswith("u"):
+        config.adding_method = "username"
+    elif answer.lower().startswith("i"):
+        config.adding_method = "user_id"
+
+    return config.adding_method

@@ -39,6 +39,10 @@ class Config:
     def target_group(self) -> int:
         return self.read().get("TARGET_GROUP_ID", None)
 
+    @property
+    def adding_method(self) -> str:
+        return self.read().get("ADDING_METHOD", "username")
+
     @api_credentials.setter
     def api_credentials(self, value: List[Dict[str, str]]) -> None:
         config = self.read()
@@ -61,4 +65,10 @@ class Config:
     def target_group(self, value: int) -> None:
         config = self.read()
         config["TARGET_GROUP_ID"] = value
+        self.write(config)
+
+    @adding_method.setter
+    def adding_method(self, value) -> None:
+        config = self.read()
+        config["ADDING_METHOD"] = value
         self.write(config)

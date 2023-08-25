@@ -131,6 +131,8 @@ class BotManager:
 
         await self.check_all_accounts_are_a_member()
 
+        adding_method = utils.get_adding_method()
+
         target_group_members = await utils.get_target_group_member_ids(target_group_id, self.accounts[0])
         members = utils.read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
 
@@ -138,7 +140,9 @@ class BotManager:
             target_group_id=target_group_id,
             source_group_id=source_group_id,
             source_members=members[account.phone_number],
-            target_group_members=target_group_members) for account
+            target_group_members=target_group_members,
+            adding_method=adding_method,
+        ) for account
             in self.accounts])
 
         utils.write_members(

@@ -86,6 +86,7 @@ class TelegramAccount(Client):
             source_group_id: Union[int, str],
             source_members: List[Member],
             target_group_members,
+            adding_method,
     ):
         for member in source_members:
 
@@ -98,7 +99,7 @@ class TelegramAccount(Client):
 
             try:
 
-                await self.add_chat_members(chat_id=target_group_id, user_ids=member.user_id)
+                await self.add_chat_members(chat_id=target_group_id, user_ids=getattr(member, adding_method))
                 logger.warning(f"{self.name}: Added {member.user_id}")
                 member.status = MemberStatus.ADDED_TO_GROUP
 
