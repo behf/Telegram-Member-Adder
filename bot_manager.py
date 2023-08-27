@@ -11,7 +11,6 @@ from models.member import Member
 from models.telegram_account import TelegramAccount
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class BotManager:
@@ -22,15 +21,13 @@ class BotManager:
     async def login(self):
         for account in self.accounts:
             await account.login()
-            # Print separator
-        print((40 * "*").center(60))
 
     async def start_bots(self):
         if not utils.check_data_is_enough():
             return False
 
         if len(self.accounts) > 0:
-            print("already read accounts, cancelling")
+            logger.info("already read accounts, cancelling")
             return True
 
         self.accounts = self.read_accounts()
@@ -150,7 +147,7 @@ class BotManager:
             source_group_id=config.source_group,
             target_group_id=target_group_id,
         )
-        print("Members added successfully!")
+        print("Finished adding members!")
 
     async def check_all_accounts_are_a_member(self):
         config = Config()

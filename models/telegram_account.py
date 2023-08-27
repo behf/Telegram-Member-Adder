@@ -11,14 +11,13 @@ from models.member import Member
 from models.member_status import MemberStatus
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class TelegramAccount(Client):
 
     def __init__(self, api_id: int, api_hash: str, phone_number: str, device: dict):
 
-        print(f"Initiating {phone_number}")
+        logger.info(f"Initiating {phone_number}")
 
         # Set attributes
         self.api_id = api_id
@@ -48,22 +47,22 @@ class TelegramAccount(Client):
 
         # Check if login successful
         if await self.get_me():
-            print(f"Successfully Logged in with {self.phone_number}")
+            logger.info(f"Successfully Logged in with {self.phone_number}")
         else:
-            print(f"Login to {self.phone_number} Failed.")
+            logger.warning(f"Login to {self.phone_number} Failed.")
 
     async def am_i_a_member(self, source_group_id: int, target_group_id: int) -> bool:
         try:
             await self.get_chat(source_group_id)
         except ValueError:
-            print(f"Account {self.phone_number} is not a member in {source_group_id} Source Group")
+            logger.warning(f"Account {self.phone_number} is not a member in {source_group_id} Source Group")
             return False
 
         try:
             await self.get_chat(target_group_id)
             return True
         except (ValueError, ChannelInvalid):
-            print(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
+            logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
             return False
 
     async def scrap_group_members_from_messages(self, group_id: int, limit, offset):
@@ -88,6 +87,8 @@ class TelegramAccount(Client):
             target_group_members,
             adding_method,
     ):
+        is_ok = True
+
         for member in source_members:
 
             if member.status != MemberStatus.NOT_PROCESSED:
@@ -114,6 +115,7 @@ class TelegramAccount(Client):
             except PeerFlood:
                 logger.warning(f"{self.name}: Account restricted. can't add {member.user_id}")
                 member.status = MemberStatus.SKIPPED_ADDER_RESTRICTED
+                is_ok = False
 
             except PeerIdInvalid:
                 logger.warning("Make sure you meet the peer before interacting with it")
@@ -126,17 +128,19 @@ class TelegramAccount(Client):
             except ChatWriteForbidden:
                 logger.warning(f"{self.phone_number} has no rights to send messages in this chat!!")
                 member.status = MemberStatus.SKIPPED_NO_MESSAGE_RIGHTS
+                is_ok = False
 
             except ChatAdminRequired:
                 logger.warning(f"{self.phone_number} has not admin rights in this chat")
                 member.status = MemberStatus.SKIPPED_NO_ADMIN_RIGHTS
+                is_ok = False
 
             except UserKicked:
                 logger.warning(f"{self.phone_number}: user {member.user_id} has been kicked from group")
                 member.status = MemberStatus.SKIPPED_USER_KICKED
 
-            except Exception as e:
-                logger.exception(f"{self.name}: Error adding {member.user_id}", exc_info=e)
+            except Exception:
+                logger.exception(f"{self.name}: Error adding {member.user_id}")
                 member.status = MemberStatus.SKIPPED_OTHER_REASONS
 
             utils.write_members_partial(
@@ -145,5 +149,9 @@ class TelegramAccount(Client):
                 target_group_id=target_group_id,
                 account_phone=self.phone_number,
             )
+
+            if not is_ok:
+                logger.warning(f"{self.phone_number}: Logging out of this account because it cannot add members")
+                return
 
             await asyncio.sleep(25)

@@ -5,3 +5,4 @@ venv
 .idea
 src/phones.txt
 *.pyc
+src/logs.log

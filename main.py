@@ -1,10 +1,30 @@
 import asyncio
+import logging
 
 from consolemenu import ConsoleMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 
 import utils
 from bot_manager import BotManager
+
+logger = logging.getLogger()
+fh = logging.FileHandler("src/logs.log")
+ch = logging.StreamHandler()
+
+f_formatter = logging.Formatter(
+    fmt="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+c_formatter = logging.Formatter("[%(levelname)8s] --- %(message)s")
+
+fh.setFormatter(f_formatter)
+ch.setFormatter(c_formatter)
+
+fh.setLevel(logging.INFO)
+ch.setLevel(logging.WARNING)
+
+logger.addHandler(fh)
+logger.addHandler(ch)
 
 
 def main():
@@ -30,7 +50,8 @@ def main():
     a3 = bot_manager.scrap_from_messages()
 
     normal_scrap_submenu = FunctionItem("Scrap members (normal and recommended)", loop.run_until_complete, [a2])
-    message_scrap_submenu = FunctionItem("Scrap from messages(for groups with hidden members)", loop.run_until_complete,[a3])
+    message_scrap_submenu = FunctionItem("Scrap from messages(for groups with hidden members)", loop.run_until_complete,
+                                         [a3])
 
     extract_members_item = SubmenuItem("Extract members", scrap_type_submenu, menu)
 
