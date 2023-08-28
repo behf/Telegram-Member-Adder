@@ -1,6 +1,8 @@
 import json
 from typing import List, Dict, Any
 
+from pyrogram.enums import UserStatus
+
 
 class Config:
 
@@ -43,6 +45,10 @@ class Config:
     def adding_method(self) -> str:
         return self.read().get("ADDING_METHOD", "username")
 
+    @property
+    def last_seen(self) -> UserStatus:
+        return eval(self.read().get("LAST_SEEN", "UserStatus.LAST_MONTH"))
+
     @api_credentials.setter
     def api_credentials(self, value: List[Dict[str, str]]) -> None:
         config = self.read()
@@ -71,4 +77,10 @@ class Config:
     def adding_method(self, value) -> None:
         config = self.read()
         config["ADDING_METHOD"] = value
+        self.write(config)
+
+    @last_seen.setter
+    def last_seen(self, value: UserStatus) -> None:
+        config = self.read()
+        config["LAST_SEEN"] = str(value)
         self.write(config)

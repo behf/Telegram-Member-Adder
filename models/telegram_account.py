@@ -65,10 +65,13 @@ class TelegramAccount(Client):
             logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
             return False
 
-    async def scrap_group_members_from_messages(self, group_id: int, limit, offset):
+    async def scrap_group_members_from_messages(self, group_id: int, limit, offset, status_list):
         set_of_users = set()
         async for message in self.get_chat_history(chat_id=group_id, limit=limit, offset=offset):
             user = message.from_user
+
+            if not utils.is_user_status_ok(user, status_list):
+                continue
 
             set_of_users.add(Member(
                 user_id=user.id,

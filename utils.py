@@ -1,3 +1,4 @@
+import datetime
 import json
 import pathlib
 import random
@@ -6,6 +7,8 @@ from collections import Counter
 from typing import List, Dict, Tuple
 
 from pyrogram import Client
+from pyrogram.enums import UserStatus
+from pyrogram.types import User
 
 from Config import Config
 from models.MemberEncoder import MemberEncoder, MemberDecoder
@@ -150,7 +153,8 @@ def add_api_id_hash() -> None:
 
         config.api_credentials = api_credentials
 
-        if input("Do you want to add more API-ID and API-HASH?(N/y)?").lower().startswith("n"):
+        reply = input("Do you want to add more API-ID and API-HASH?(N/y)?")
+        if reply.lower().startswith("n") or reply == "":
             break
 
 
@@ -271,3 +275,69 @@ def get_adding_method() -> str:
         config.adding_method = "user_id"
 
     return config.adding_method
+
+
+def get_member_last_seen_status() -> List[UserStatus]:
+    config = Config()
+    statuses = [
+        UserStatus.ONLINE,
+        UserStatus.RECENTLY,
+        UserStatus.LAST_WEEK,
+        UserStatus.LAST_MONTH,
+        UserStatus.LONG_AGO,
+    ]
+
+    while True:
+        reply = input(
+            f"""
+            1- Online
+            2- Last seen recently
+            3- Last seen within a week
+            4- Last seen within a month
+            5- Last seen a long time ago
+            Choose the online status of members to be scrapped[{statuses.index(config.last_seen)+1}]:
+        """)
+        if reply == '':
+            config.last_seen = statuses[statuses.index(config.last_seen)]
+            return statuses[:statuses.index(config.last_seen)+1]
+        try:
+            reply = int(reply)
+        except ValueError:
+            print("Invalid input, Please enter a number!")
+        else:
+            config.last_seen = statuses[reply-1]
+            return statuses[:reply]
+
+
+def calculate_user_last_seen(user: User) -> UserStatus:
+    if user.status == UserStatus.OFFLINE:
+        return calculate_time_difference(user.last_online_date)
+    return user.status
+
+
+def is_user_status_ok(user: User, status_list: List[UserStatus]) -> bool:
+    status = calculate_user_last_seen(user)
+    return status in status_list
+
+
+def calculate_time_difference(input_datetime):
+    # Get the current date and time
+    current_datetime = datetime.datetime.now()
+
+    # Calculate the difference between the input datetime and the current datetime
+    time_difference = current_datetime - input_datetime
+
+    # Define time intervals for "Recently," a week, and a month
+    recently_interval = datetime.timedelta(days=3)
+    one_week = datetime.timedelta(weeks=1)
+    one_month = datetime.timedelta(days=30)
+
+    # Compare the time difference with the intervals
+    if time_difference <= recently_interval:
+        return UserStatus.RECENTLY
+    elif time_difference <= one_week:
+        return UserStatus.LAST_WEEK
+    elif time_difference <= one_month:
+        return UserStatus.LAST_MONTH
+    else:
+        return UserStatus.LONG_AGO

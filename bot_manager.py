@@ -51,6 +51,8 @@ class BotManager:
         if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
             return None
 
+        status_list = utils.get_member_last_seen_status()
+
         members_list = []
 
         for index, account in enumerate(self.accounts):
@@ -61,6 +63,8 @@ class BotManager:
                 gc.disable()
 
                 if index == 0 and not chat_member.status == ChatMemberStatus.ADMINISTRATOR:
+                    if not utils.is_user_status_ok(chat_member.user, status_list):
+                        continue
                     # Only first account scrapes and adds to contacts
                     extracted_member = Member(member=chat_member)
                     members_list.append(extracted_member)
@@ -90,6 +94,8 @@ class BotManager:
         if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
             return None
 
+        status_list = utils.get_member_last_seen_status()
+
         message_count = await self.accounts[0].get_chat_history_count(source_group_id)
 
         offset = int(message_count / len(self.accounts))
@@ -100,8 +106,9 @@ class BotManager:
             awaitables.append(account.scrap_group_members_from_messages(
                 group_id=source_group_id,
                 limit=offset,
-                offset=multiplier * offset),
-            )
+                offset=multiplier * offset,
+                status_list=status_list,
+            ))
 
         list_of_set_of_members = await asyncio.gather(*awaitables)
 
