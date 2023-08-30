@@ -40,14 +40,14 @@ def main():
     add_api_credentials_item = FunctionItem("Add API-ID and API-HASH", utils.add_api_id_hash)
 
     loop = asyncio.get_event_loop()
-    a1 = bot_manager.add_members_to_target_group()
+    a1 = bot_manager.add_members_to_target_group
     start_adding_members = FunctionItem("Start Adding members", loop.run_until_complete, [a1])
 
     # A SelectionMenu constructs a menu from a list of strings
     scrap_type_submenu = ConsoleMenu("Extract members")
 
-    a2 = bot_manager.scrape_source_group()
-    a3 = bot_manager.scrap_from_messages()
+    a2 = bot_manager.scrape_source_group
+    a3 = bot_manager.scrap_from_messages
 
     normal_scrap_submenu = FunctionItem("Scrap members (normal and recommended)", loop.run_until_complete, [a2])
     message_scrap_submenu = FunctionItem("Scrap from messages(for groups with hidden members)", loop.run_until_complete,
