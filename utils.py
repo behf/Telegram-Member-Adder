@@ -4,7 +4,7 @@ import pathlib
 import random
 import re
 from collections import Counter
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 from pyrogram import Client
 from pyrogram.enums import UserStatus
@@ -46,15 +46,27 @@ def create_required_directories():
     groups_path.mkdir(parents=True, exist_ok=True)
 
 
-def write_members(extracted_members: Dict[str, List[Member]], source_group_id: int, target_group_id: int) -> None:
-    with open(f'src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json', 'w', encoding="utf-8") as f:
+def get_filename(source_group_id: Union[int, str], target_group_id: Union[int, str]) -> str:
+    source_group_id = abs(source_group_id) if isinstance(source_group_id, int) else source_group_id
+    target_group_id = abs(target_group_id) if isinstance(target_group_id, int) else target_group_id
+
+    return f'src/groups/{source_group_id}_{target_group_id}.json'
+
+
+def write_members(
+        extracted_members: Dict[str, List[Member]],
+        source_group_id: Union[int, str],
+        target_group_id: Union[int, str],
+) -> None:
+    filename = get_filename(source_group_id=source_group_id, target_group_id=target_group_id)
+    with open(filename, 'w', encoding="utf-8") as f:
         json.dump(extracted_members, f, indent=4, ensure_ascii=False, cls=MemberEncoder)
 
 
 def write_members_partial(
         members: List[Member],
-        source_group_id: int,
-        target_group_id: int,
+        source_group_id: Union[int, str],
+        target_group_id: Union[int, str],
         account_phone: str,
 ) -> None:
     all_members_dict = read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
@@ -62,7 +74,7 @@ def write_members_partial(
     write_members(extracted_members=all_members_dict, source_group_id=source_group_id, target_group_id=target_group_id)
 
 
-def get_source_group_id() -> int:
+def get_source_group_id() -> Union[int, str]:
     config = Config()
     source_group_id = config.source_group
 
@@ -72,13 +84,17 @@ def get_source_group_id() -> int:
         source_input = source_input or source_group_id
 
         if is_valid_group_id(source_input):
-            config.source_group = int(source_input)
-            return int(source_input)
+            if str(source_input).lstrip("-").isdigit():
+                config.source_group = int(source_input)
+                return int(source_input)
+            else:
+                config.source_group = source_input
+                return source_input
         else:
             print("Invalid Group ID")
 
 
-def get_target_group_id() -> int:
+def get_target_group_id() -> Union[int, str]:
     config = Config()
     target_group_id = config.target_group
 
@@ -88,12 +104,17 @@ def get_target_group_id() -> int:
         target_input = target_input or target_group_id
 
         if is_valid_group_id(target_input):
-            return int(target_input)
+            if str(target_input).lstrip("-").isdigit():
+                config.target_group = int(target_input)
+                return int(target_input)
+            else:
+                config.target_group = target_input
+                return target_input
         else:
             print("Invalid Group ID")
 
 
-def add_group_ids() -> Tuple[int, int]:
+def add_group_ids() -> Tuple[Union[int, str], Union[int, str]]:
     source_group_id = get_source_group_id()
     target_group_id = get_target_group_id()
 
@@ -104,10 +125,15 @@ def add_group_ids() -> Tuple[int, int]:
     return source_group_id, target_group_id
 
 
-def is_valid_group_id(group_id) -> bool:
-    pattern = re.compile("-?[0-9]+")
-    match = pattern.match(str(group_id))
-    return bool(match)
+def is_valid_group_id(group_id: Union[int, str]) -> bool:
+    if str(group_id).lstrip("-").isdigit():
+        pattern = re.compile("-?[0-9]+")
+        match = pattern.match(str(group_id))
+        return bool(match)
+    else:
+        pattern = re.compile("^[a-zA-Z][a-zA-Z0-9_]{3,}[a-zA-Z0-9]$")
+        match = pattern.match(group_id)
+        return bool(match)
 
 
 def get_valid_api_id() -> id:
@@ -222,15 +248,18 @@ def check_data_is_enough() -> bool:
     return True
 
 
-def is_scrapped(source_group_id: int, target_group_id: int) -> bool:
-    group_filename = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
+def is_scrapped(source_group_id: Union[int, str], target_group_id: Union[int, str]) -> bool:
+    filename = get_filename(source_group_id=source_group_id, target_group_id=target_group_id)
+    group_filename = pathlib.Path(filename)
     return group_filename.exists()
 
 
-def read_scrapped_members(source_group_id: int, target_group_id: int) -> Dict[str, List[Member]]:
-    group_filename = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
+def read_scrapped_members(source_group_id: Union[int, str], target_group_id: Union[int, str]) -> Dict[str, List[Member]]:
+    group_filename = get_filename(source_group_id=source_group_id, target_group_id=target_group_id)
+
     with open(file=group_filename, mode='r', encoding="utf-8") as f:
         list_of_members = json.load(f, cls=MemberDecoder)
+
     return list_of_members
 
 
@@ -239,16 +268,15 @@ def print_state(members: List[Member]) -> None:
     print(status_counts)
 
 
-async def get_target_group_member_ids(group_id: int, client: Client) -> List[int]:
+async def get_target_group_member_ids(group_id: Union[int, str], client: Client) -> List[int]:
     members = []
     async for member in client.get_chat_members(chat_id=group_id):
         members.append(member.user.id)
     return members
 
 
-def ask_for_rescrap(source_group_id: int, target_group_id: int) -> bool:
-    group_scrap_path = pathlib.Path(f"src/groups/{abs(source_group_id)}_{abs(target_group_id)}.json")
-    if not group_scrap_path.exists():
+def ask_for_rescrap(source_group_id: Union[int, str], target_group_id: Union[int, str]) -> bool:
+    if not is_scrapped(source_group_id=source_group_id, target_group_id=target_group_id):
         return True
     inpt = input("we have scraped this group before, Do you want to scrap it again?(Yes/no)")
 
@@ -295,17 +323,17 @@ def get_member_last_seen_status() -> List[UserStatus]:
             3- Last seen within a week
             4- Last seen within a month
             5- Last seen a long time ago
-            Choose the online status of members to be scrapped[{statuses.index(config.last_seen)+1}]:
+            Choose the online status of members to be scrapped[{statuses.index(config.last_seen) + 1}]:
         """)
         if reply == '':
             config.last_seen = statuses[statuses.index(config.last_seen)]
-            return statuses[:statuses.index(config.last_seen)+1]
+            return statuses[:statuses.index(config.last_seen) + 1]
         try:
             reply = int(reply)
         except ValueError:
             print("Invalid input, Please enter a number!")
         else:
-            config.last_seen = statuses[reply-1]
+            config.last_seen = statuses[reply - 1]
             return statuses[:reply]
 
 

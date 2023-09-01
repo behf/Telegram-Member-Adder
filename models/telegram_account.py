@@ -51,7 +51,7 @@ class TelegramAccount(Client):
         else:
             logger.warning(f"Login to {self.phone_number} Failed.")
 
-    async def am_i_a_member(self, source_group_id: int, target_group_id: int) -> bool:
+    async def am_i_a_member(self, source_group_id: Union[int, str], target_group_id: Union[int, str]) -> bool:
         try:
             await self.get_chat(source_group_id)
         except ValueError:
@@ -65,7 +65,7 @@ class TelegramAccount(Client):
             logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
             return False
 
-    async def scrap_group_members_from_messages(self, group_id: int, limit, offset, status_list):
+    async def scrap_group_members_from_messages(self, group_id: Union[int, str], limit, offset, status_list):
         set_of_users = set()
         async for message in self.get_chat_history(chat_id=group_id, limit=limit, offset=offset):
             user = message.from_user

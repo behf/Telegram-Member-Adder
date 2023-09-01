@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 from pyrogram.enums import UserStatus
 
@@ -34,11 +34,11 @@ class Config:
         return self.read().get("PHONE_NUMBERS", [])
 
     @property
-    def source_group(self) -> int:
+    def source_group(self) -> Union[int, str]:
         return self.read().get("SOURCE_GROUP_ID", None)
 
     @property
-    def target_group(self) -> int:
+    def target_group(self) -> Union[int, str]:
         return self.read().get("TARGET_GROUP_ID", None)
 
     @property
@@ -62,14 +62,18 @@ class Config:
         self.write(config)
 
     @source_group.setter
-    def source_group(self, value: int) -> None:
+    def source_group(self, value: Union[int, str]) -> None:
         config = self.read()
+        if isinstance(value, str) and value.lstrip("-").isdigit():
+            value = int(value)
         config["SOURCE_GROUP_ID"] = value
         self.write(config)
 
     @target_group.setter
-    def target_group(self, value: int) -> None:
+    def target_group(self, value: Union[int, str]) -> None:
         config = self.read()
+        if isinstance(value, str) and value.lstrip("-").isdigit():
+            value = int(value)
         config["TARGET_GROUP_ID"] = value
         self.write(config)
 

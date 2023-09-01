@@ -44,12 +44,12 @@ class BotManager:
 
     async def scrape_source_group(self) -> None:
         if not await self.start_bots():
-            return None
+            return
 
         source_group_id, target_group_id = utils.add_group_ids()
 
         if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
-            return None
+            return
 
         status_list = utils.get_member_last_seen_status()
 
@@ -87,12 +87,12 @@ class BotManager:
     async def scrap_from_messages(self) -> None:
 
         if not await self.start_bots():
-            return None
+            return
 
         source_group_id, target_group_id = utils.add_group_ids()
 
         if not utils.ask_for_rescrap(source_group_id=source_group_id, target_group_id=target_group_id):
-            return None
+            return
 
         status_list = utils.get_member_last_seen_status()
 
