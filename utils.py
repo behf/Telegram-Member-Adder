@@ -369,3 +369,14 @@ def calculate_time_difference(input_datetime):
         return UserStatus.LAST_MONTH
     else:
         return UserStatus.LONG_AGO
+
+
+def get_wait_time() -> int:
+    config = Config()
+    inpt = input(f"the time gap between each addition [{config.wait_time}] seconds:")
+
+    if inpt == "":
+        return config.wait_time
+    if inpt.isdigit():
+        config.wait_time = int(inpt)
+        return int(inpt)

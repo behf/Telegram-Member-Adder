@@ -49,6 +49,10 @@ class Config:
     def last_seen(self) -> UserStatus:
         return eval(self.read().get("LAST_SEEN", "UserStatus.LAST_MONTH"))
 
+    @property
+    def wait_time(self) -> int:
+        return self.read().get("WAIT_TIME", 30)
+
     @api_credentials.setter
     def api_credentials(self, value: List[Dict[str, str]]) -> None:
         config = self.read()
@@ -87,4 +91,10 @@ class Config:
     def last_seen(self, value: UserStatus) -> None:
         config = self.read()
         config["LAST_SEEN"] = str(value)
+        self.write(config)
+
+    @wait_time.setter
+    def wait_time(self, value: int) -> None:
+        config = self.read()
+        config["WAIT_TIME"] = value
         self.write(config)

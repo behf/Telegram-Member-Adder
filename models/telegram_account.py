@@ -85,8 +85,9 @@ class TelegramAccount(Client):
             target_group_id: Union[int, str],
             source_group_id: Union[int, str],
             source_members: List[Member],
-            target_group_members,
-            adding_method,
+            target_group_members: List[int],
+            adding_method: str,
+            wait_time: int,
     ):
         is_ok = True
 
@@ -155,4 +156,4 @@ class TelegramAccount(Client):
                 self.logger.warning(f"{self.phone_number}: Logging out of this account because it cannot add members")
                 return
 
-            await asyncio.sleep(25)
+            await asyncio.sleep(wait_time)

@@ -135,6 +135,8 @@ class BotManager:
             print("Group not scrapped, Please scrap and retry")
             return
 
+        wait_time = utils.get_wait_time()
+
         await self.check_all_accounts_are_a_member()
 
         adding_method = utils.get_adding_method()
@@ -148,6 +150,7 @@ class BotManager:
             source_members=members[account.phone_number],
             target_group_members=target_group_members,
             adding_method=adding_method,
+            wait_time=wait_time,
         ) for account
             in self.accounts])
 
