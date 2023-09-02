@@ -78,6 +78,8 @@ class TelegramAccount(Client):
                 last_name=user.last_name,
             ))
 
+            await asyncio.sleep(0.025)
+
         return set_of_users
 
     async def add_member_to_target_group(

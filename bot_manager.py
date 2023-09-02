@@ -110,6 +110,7 @@ class BotManager:
                 offset=multiplier * offset,
                 status_list=status_list,
             ))
+        logger.info("Start to scrap members. this may take a few minutes.")
 
         list_of_set_of_members = await asyncio.gather(*awaitables)
 
