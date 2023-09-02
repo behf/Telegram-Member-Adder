@@ -7,7 +7,9 @@ from consolemenu.items import FunctionItem, SubmenuItem
 import utils
 from bot_manager import BotManager
 
-logger = logging.getLogger()
+logger = logging.getLogger("member-adder")
+logger.setLevel(logging.DEBUG)
+
 fh = logging.FileHandler("src/logs.log")
 ch = logging.StreamHandler()
 
@@ -20,12 +22,13 @@ c_formatter = logging.Formatter("[%(levelname)8s] --- %(message)s")
 fh.setFormatter(f_formatter)
 ch.setFormatter(c_formatter)
 
-fh.setLevel(logging.INFO)
-ch.setLevel(logging.WARNING)
+fh.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+print(f"list of handlers: {logger.handlers}")
 
 def main():
     utils.create_required_directories()

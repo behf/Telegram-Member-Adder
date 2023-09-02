@@ -10,7 +10,7 @@ from Config import Config
 from models.member import Member
 from models.telegram_account import TelegramAccount
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"member-adder.{__name__}")
 
 
 class BotManager:
@@ -27,7 +27,7 @@ class BotManager:
             return False
 
         if len(self.accounts) > 0:
-            logger.info("already read accounts, cancelling")
+            logger.debug("already read accounts, cancelling")
             return True
 
         self.accounts = self.read_accounts()
@@ -83,6 +83,7 @@ class BotManager:
             source_group_id=source_group_id,
             target_group_id=target_group_id,
         )
+        logger.info(f"members of {source_group_id} scraped and stored in a file.")
 
     async def scrap_from_messages(self) -> None:
 
@@ -120,6 +121,7 @@ class BotManager:
             source_group_id=source_group_id,
             target_group_id=target_group_id,
         )
+        logger.info(f"members of {source_group_id} scraped from messages and stored in a file.")
 
     async def add_members_to_target_group(self) -> None:
         if not await self.start_bots():

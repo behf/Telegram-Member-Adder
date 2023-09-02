@@ -10,15 +10,12 @@ import utils
 from models.member import Member
 from models.member_status import MemberStatus
 
-logger = logging.getLogger(__name__)
-
 
 class TelegramAccount(Client):
 
     def __init__(self, api_id: int, api_hash: str, phone_number: str, device: dict):
-
-        logger.info(f"Initiating {phone_number}")
-
+        self.logger = logging.getLogger(f"member-adder.{__name__}")
+        self.logger.debug(f"Initiating {phone_number}")
         # Set attributes
         self.api_id = api_id
         self.api_hash = api_hash
@@ -47,22 +44,23 @@ class TelegramAccount(Client):
 
         # Check if login successful
         if await self.get_me():
-            logger.info(f"Successfully Logged in with {self.phone_number}")
+            self.logger.info(f"Successfully Logged in with {self.phone_number}")
         else:
-            logger.warning(f"Login to {self.phone_number} Failed.")
+            self.logger.warning(f"Login to {self.phone_number} Failed.")
+        await asyncio.sleep(0.1)
 
     async def am_i_a_member(self, source_group_id: Union[int, str], target_group_id: Union[int, str]) -> bool:
         try:
             await self.get_chat(source_group_id)
         except ValueError:
-            logger.warning(f"Account {self.phone_number} is not a member in {source_group_id} Source Group")
+            self.logger.warning(f"Account {self.phone_number} is not a member in {source_group_id} Source Group")
             return False
 
         try:
             await self.get_chat(target_group_id)
             return True
         except (ValueError, ChannelInvalid):
-            logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
+            self.logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
             return False
 
     async def scrap_group_members_from_messages(self, group_id: Union[int, str], limit, offset, status_list):
@@ -104,46 +102,46 @@ class TelegramAccount(Client):
             try:
 
                 await self.add_chat_members(chat_id=target_group_id, user_ids=getattr(member, adding_method))
-                logger.warning(f"{self.name}: Added {member.user_id}")
+                self.logger.warning(f"{self.name}: Added {member.user_id}")
                 member.status = MemberStatus.ADDED_TO_GROUP
 
             except UserPrivacyRestricted:
-                logger.warning(f"{self.name}: {member.user_id} has privacy restricted")
+                self.logger.warning(f"{self.name}: {member.user_id} has privacy restricted")
                 member.status = MemberStatus.SKIPPED_PRIVACY
 
             except UserNotMutualContact:
-                logger.warning(f"{self.name}: You must be in their contacts to add {member.user_id}")
+                self.logger.warning(f"{self.name}: You must be in their contacts to add {member.user_id}")
                 member.status = MemberStatus.SKIPPED_HAS_LEFT
 
             except PeerFlood:
-                logger.warning(f"{self.name}: Account restricted. can't add {member.user_id}")
+                self.logger.warning(f"{self.name}: Account restricted. can't add {member.user_id}")
                 member.status = MemberStatus.SKIPPED_ADDER_RESTRICTED
                 is_ok = False
 
             except PeerIdInvalid:
-                logger.warning("Make sure you meet the peer before interacting with it")
+                self.logger.warning("Make sure you meet the peer before interacting with it")
                 member.status = MemberStatus.SKIPPED_PEER_INVALID
 
             except TypeError:
-                logger.warning(f"User {member.user_id} has no username")
+                self.logger.warning(f"User {member.user_id} has no username")
                 member.status = MemberStatus.SKIPPED_HAVE_NOT_USERNAME
 
             except ChatWriteForbidden:
-                logger.warning(f"{self.phone_number} has no rights to send messages in this chat!!")
+                self.logger.warning(f"{self.phone_number} has no rights to send messages in this chat!!")
                 member.status = MemberStatus.SKIPPED_NO_MESSAGE_RIGHTS
                 is_ok = False
 
             except ChatAdminRequired:
-                logger.warning(f"{self.phone_number} has not admin rights in this chat")
+                self.logger.warning(f"{self.phone_number} has not admin rights in this chat")
                 member.status = MemberStatus.SKIPPED_NO_ADMIN_RIGHTS
                 is_ok = False
 
             except UserKicked:
-                logger.warning(f"{self.phone_number}: user {member.user_id} has been kicked from group")
+                self.logger.warning(f"{self.phone_number}: user {member.user_id} has been kicked from group")
                 member.status = MemberStatus.SKIPPED_USER_KICKED
 
             except Exception:
-                logger.exception(f"{self.name}: Error adding {member.user_id}")
+                self.logger.exception(f"{self.name}: Error adding {member.user_id}")
                 member.status = MemberStatus.SKIPPED_OTHER_REASONS
 
             utils.write_members_partial(
@@ -154,7 +152,7 @@ class TelegramAccount(Client):
             )
 
             if not is_ok:
-                logger.warning(f"{self.phone_number}: Logging out of this account because it cannot add members")
+                self.logger.warning(f"{self.phone_number}: Logging out of this account because it cannot add members")
                 return
 
             await asyncio.sleep(25)
