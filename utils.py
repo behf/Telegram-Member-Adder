@@ -1,10 +1,11 @@
 import datetime
 import json
+import math
 import pathlib
 import random
 import re
 from collections import Counter
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Set
 
 from pyrogram import Client
 from pyrogram.enums import UserStatus
@@ -69,6 +70,8 @@ def write_members_partial(
         target_group_id: Union[int, str],
         account_phone: str,
 ) -> None:
+    if not is_scrapped(source_group_id=source_group_id, target_group_id=target_group_id):
+        pathlib.Path(get_filename(source_group_id=source_group_id, target_group_id=target_group_id)).write_text("{}")
     all_members_dict = read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
     all_members_dict[account_phone] = members
     write_members(extracted_members=all_members_dict, source_group_id=source_group_id, target_group_id=target_group_id)
@@ -380,3 +383,48 @@ def get_wait_time() -> int:
     if inpt.isdigit():
         config.wait_time = int(inpt)
         return int(inpt)
+
+
+def remove_duplicates(members: List[Set[Member]]) -> List[Set[Member]]:
+    seen = set()
+    unique_sets = []
+    for s in members:
+        uniq = set(x for x in s if x not in seen)
+
+        unique_sets.append(s)
+
+        for x in (s - uniq):
+            # Randomly choose set to remove duplicate from
+            remove_from = random.choice(unique_sets)
+            remove_from.discard(x)
+
+        seen |= uniq
+
+    return unique_sets
+
+
+def seconds_to_human_readable(secs: int) -> str:
+    hours = math.floor(secs / 3600)
+    minutes = math.floor((secs % 3600) / 60)
+    seconds = secs % 60
+
+    output = ""
+    if hours > 0:
+        output += f"{hours}h "
+    if minutes > 0:
+        output += f"{minutes}m "
+    output += f"{seconds}s"
+
+    return output.strip()
+
+
+def get_other_scrapped_members(source_group_id, target_group_id, phone_number) -> Set:
+    try:
+        members = read_scrapped_members(source_group_id=source_group_id, target_group_id=target_group_id)
+    except FileNotFoundError:
+        members = {}
+    set_of_members = set()
+    for s in members.values():
+        set_of_members |= set(s)
+
+    return set_of_members - set(members.get(phone_number, []))

@@ -53,6 +53,8 @@ class BotManager:
 
         status_list = utils.get_member_last_seen_status()
 
+        await self.check_all_accounts_are_a_member()
+
         members_list = []
 
         for index, account in enumerate(self.accounts):
@@ -97,17 +99,22 @@ class BotManager:
 
         status_list = utils.get_member_last_seen_status()
 
-        message_count = await self.accounts[0].get_chat_history_count(source_group_id)
+        await self.check_all_accounts_are_a_member()
 
-        offset = int(message_count / len(self.accounts))
+        async for message in self.accounts[0].get_chat_history(chat_id=source_group_id, limit=10):
+            if message.id:
+                last_message_id = message.id
+                break
+
+        offset_id = int(last_message_id / len(self.accounts))
 
         awaitables = []
 
         for multiplier, account in enumerate(self.accounts, 0):
             awaitables.append(account.scrap_group_members_from_messages(
                 group_id=source_group_id,
-                limit=offset,
-                offset=multiplier * offset,
+                limit=offset_id,
+                offset_id=last_message_id - (multiplier * offset_id),
                 status_list=status_list,
             ))
         logger.info("Start to scrap members. this may take a few minutes.")

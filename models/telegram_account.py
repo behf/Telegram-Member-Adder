@@ -3,10 +3,12 @@ import logging
 from typing import List, Union
 
 from pyrogram import Client
+from pyrogram.enums import UserStatus
 from pyrogram.errors import ChannelInvalid, PeerIdInvalid, PeerFlood, UserNotMutualContact, UserPrivacyRestricted, \
     ChatWriteForbidden, ChatAdminRequired, UserKicked
 
 import utils
+from Config import Config
 from models.member import Member
 from models.member_status import MemberStatus
 
@@ -63,13 +65,35 @@ class TelegramAccount(Client):
             self.logger.warning(f"Account {self.phone_number} is not a member in {target_group_id} Target Group")
             return False
 
-    async def scrap_group_members_from_messages(self, group_id: Union[int, str], limit, offset, status_list):
+    async def scrap_group_members_from_messages(
+            self,
+            group_id: Union[int, str],
+            limit: int,
+            offset_id: int,
+            status_list: List[UserStatus],
+    ):
         set_of_users = set()
-        async for message in self.get_chat_history(chat_id=group_id, limit=limit, offset=offset):
+
+        config = Config()
+        source_group_id = group_id
+        target_group_id = config.target_group
+
+        wait_time = 0.025
+        counter = 0
+
+        self.logger.info(
+            f"{self.phone_number} has to scrap {limit} messages. it would take "
+            f"{utils.seconds_to_human_readable(int(limit * wait_time))} if there were no limitations")
+
+        self.logger.info(f"{self.phone_number} scrapping offset_id:{offset_id} limit:{limit}")
+
+        async for message in self.get_chat_history(chat_id=source_group_id, limit=limit, offset_id=offset_id):
             user = message.from_user
 
-            if not utils.is_user_status_ok(user, status_list):
+            if not user or not utils.is_user_status_ok(user, status_list):
                 continue
+
+            counter += 1
 
             set_of_users.add(Member(
                 user_id=user.id,
@@ -78,9 +102,42 @@ class TelegramAccount(Client):
                 last_name=user.last_name,
             ))
 
-            await asyncio.sleep(0.025)
+            await asyncio.sleep(wait_time)
 
-        return set_of_users
+            if counter % 400 == 0:
+                all_members = utils.get_other_scrapped_members(
+                    source_group_id=source_group_id,
+                    target_group_id=target_group_id,
+                    phone_number=self.phone_number,
+                )
+
+                uniq = set_of_users - all_members
+
+                self.logger.debug(f"{self.phone_number} extracted {len(set_of_users)}"
+                                  f" users {len(uniq)} unique users,storing...")
+
+                utils.write_members_partial(
+                    members=list(uniq),
+                    source_group_id=source_group_id,
+                    target_group_id=config.target_group,
+                    account_phone=self.phone_number,
+                )
+                if counter % 2000 == 0:
+                    self.logger.info(f"{self.phone_number} users: {len(set_of_users)} unique users: {len(uniq)} "
+                                     f"Elapsed time: "
+                                     f"{utils.seconds_to_human_readable(int(counter * wait_time))} "
+                                     f"Estimated Remaining time: "
+                                     f"{utils.seconds_to_human_readable(int((limit - counter) * wait_time))}")
+
+        self.logger.debug(f"{self.phone_number} finished scrapping.")
+
+        all_members = utils.get_other_scrapped_members(
+            source_group_id=source_group_id,
+            target_group_id=target_group_id,
+            phone_number=self.phone_number,
+        )
+
+        return set_of_users - all_members
 
     async def add_member_to_target_group(
             self,
